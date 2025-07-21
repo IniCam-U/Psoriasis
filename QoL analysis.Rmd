@@ -1,0 +1,61 @@
+---
+title: "QoL analysis and CEA for Psoriasis medication"
+author: "Ini"
+date: "2025-03-16"
+output: html_document
+---
+
+#Background#
+The objective of this analysis is to determine the quality of life and cost-effectiveness of a new treatment for Psoriasis and a Placebo. The analysis will be based on the Quality of Life (QoL) of the patients. The QoL was measured using the EQ-5D-3L instrument, which was administered to the participants of the study. The EQ-5D-3L instrument measures the health status of the patients across five dimensions: mobility, self-care, usual activities, pain/discomfort, and anxiety/depression. 
+
+**Data**
+The datafile shows the results from a survey to patients who were randomized into one treatment and one control group. The treatment group were treated with a new medicine. The control group received placebo. The patients evaluated their perceived health at week 0 and week 52. The datafile contains the following variables: Treatment group, Gender, Age, EQ-5D-3L dimensions at week 0 and week 52, and the cost of the treatment.
+
+#Analysis#
+The analysis will be conducted in two parts. The first part will focus on the quality of life of the patients. The second part will focus on the cost-effectiveness of the treatment.
+
+##Part 1: Quality of Life Analysis##
+The datafile is in an Excel format. We will read the datafile into R and conduct the analysis. First, call the necessary libraries and read the datafile into R.
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(car)
+library(moments)
+```
+
+
+```{r}
+QoL_Pso <- read_excel("~/OneDrive/Documents/EDUCATION/Datasets/QoL_Psoriasis.xlsx")
+View(QoL_Pso)
+```
+
+
+The values of the EQ-5D-3L dimensions range from 1 to 3,and have been stored as *integer* datatypes,with 1 representing no problems, 2 representing some problems, and 3 representing extreme problems. This will be labelled as "None", "Some", and "Extreme".
+
+```{r}
+QoL_Pso$mo_0 <- factor(QoL_Pso$mo_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
+```
+
+##Exploring the demographics of the participants##
+To ensure that both gender were equally represented in the study, the demographics of the participants were explored. A 2*2 contigency table that displays both counts and proportions of males and females across the treatment groups was created and a Chi-square test performed to determine if there was a significant difference in the distribution.
+
+```{r}
+gender_count <- table(QoL_Pso$Gender, QoL_Pso$Group)
+gender_count
+gender_prop <- prop.table(gender_count, margin = 1)
+gender_prop
+chi_sq_gender <- chisq.test(gender_count)
+chi_sq_gender
+```
+
+
+
+
+
+
+
+
+
+
