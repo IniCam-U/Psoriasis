@@ -4,6 +4,7 @@ library(ggplot2)
 library(car)
 library(moments)
 
+# Importing Excel
 QoL_Pso <- read_excel("QoL_Psoriasis.xlsx")
 View(QoL_Pso)
 PsoProve_RCT <- read_excel("PsoProve2_RCT dataset.xlsx")
