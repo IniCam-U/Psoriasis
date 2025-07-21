@@ -14,7 +14,12 @@ View(PsoProve_RCT)
 Psosol_data <- Psosol_data %>%
   left_join(PsoProve_RCT %>% select(ID, PASI_week_bas, PASI_week_mid, PASI_week_end, Work_impair_0, Work_impair_52, Spe_visits, GP_visits, Phototx_qty, Systx_strt_wk, Psotop_qty), by = "ID")
 
-# Define all variables
+# Define variables
+phototx_cost <- 812
+specialist_cost <- 3770.70
+gp_cost <- 1862.40
+systemicthx_cost <- 3839.70
+psosol_cost <- 521
 hicp_2011 <- 97.75
 hicp_2022 <- 119.39
 infla_factor <- hicp_2022 / hicp_2011
@@ -22,16 +27,6 @@ infla_factor <- hicp_2022 / hicp_2011
 #Labeling the variables
 Psosol_data$Group <- factor(Psosol_data$Group, levels = c(0, 1), labels = c("Placebo", "Treatment"))
 Psosol_data$Gender <- factor(Psosol_data$Gender, levels = c(1, 2), labels = c("Male", "Female"))
-#Psosol_data$mo_0 <- factor(Psosol_data$mo_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$mo_52 <- factor(Psosol_data$mo_52, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$sc_0 <- factor(Psosol_data$sc_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$sc_52 <- factor(Psosol_data$sc_52, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$ua_0 <- factor(Psosol_data$ua_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$ua_52 <- factor(Psosol_data$ua_52, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$pd_0 <- factor(Psosol_data$pd_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$pd_52 <- factor(Psosol_data$pd_52, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$ad_0 <- factor(Psosol_data$ad_0, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
-#Psosol_data$ad_52 <- factor(Psosol_data$ad_52, levels = c(1, 2, 3), labels = c("None", "Some", "Extreme"))
 
 #Exploring the demographics of the sample
 gender_count <- table(Psosol_data$Gender, Psosol_data$Group)
@@ -206,3 +201,61 @@ get_benefit_rate <- function(age) {
 
 Psosol_data <- Psosol_data %>%
   mutate(Ann_benefits = get_benefit_rate(Age) * Ann_income_2022)
+
+# Estimate Psosol bottles consumed annually
+Psosol_data <- Psosol_data %>%
+  mutate(
+    Ann_Psotop_bottle = ceiling((Psotop_qty * 52.1429) / 100))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Systx_strt_wk = as.numeric(Systx_strt_wk))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Systx_duration = if_else(!is.na(Systx_strt_wk),
+                                52.1429 - Systx_strt_wk + 1,
+                                0))  # If no start week, assume no systemic therapy
+
+# Estimate productivity loss
+Psosol_data <- Psosol_data %>%
+  mutate(Productivity_loss = (Ann_income_2022 + Ann_benefits) * Avg_work_impairment)
+
+# Estimate healthcare cost
+Psosol_data <- Psosol_data %>%
+  mutate(Ann_specialist_cost = (Spe_visits * specialist_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Ann_gp_cost = (GP_visits * gp_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Ann_phototx_cost = (Phototx_qty * phototx_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Ann_systemictx_cost = (Systx_duration * systemicthx_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(Ann_psosol_cost = (Ann_Psotop_bottle * psosol_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(healthcare_cost = (Ann_psosol_cost + Ann_systemictx_cost + Ann_phototx_cost + Ann_gp_cost + Ann_specialist_cost))
+
+Psosol_data <- Psosol_data %>%
+  mutate(total_cost = (healthcare_cost + Productivity_loss))
+
+# Initialize dataframe and  store average cost and QALY 
+CUA_summary <- Psosol_data %>%
+  group_by(Group) %>%
+  summarise(
+    mean_total_cost = mean(total_cost, na.rm = TRUE),
+    mean_healthcare_cost = mean(healthcare_cost, na.rm = TRUE),
+    mean_productivity_loss = mean(Productivity_loss, na.rm = TRUE),
+    mean_QALY = mean(QALY, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# Calculate ICER
+ref <- CUA_summary %>% filter(Group == "Treatment")
+comp <- CUA_summary %>% filter(Group == "Placebo")
+delta_cost <- comp$mean_total_cost - ref$mean_total_cost
+delta_QALY <- comp$mean_QALY - ref$mean_QALY
+ICER <- delta_cost / delta_QALY
+ICER
