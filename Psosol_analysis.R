@@ -1,14 +1,29 @@
+###############################TECHNICAL PREPARATION###########################
+#Set working directory
+setwd("/Users/ini/Documents/GitHub/Psoriasis")
+
+#Install required packages
+require(mice)
+require(lattice)
+install.packages("mice")
 library(readxl)
 library(dplyr)
 library(ggplot2)
 library(car)
 library(moments)
+library(mice)
 
-# Importing Excel
+#Clear working environment####
+cat("\014") # clear console
+rm(list = ls()) # clear environment
+gc() # garbage collection 
+
+###############################INPUTS###########################
+# Import Excel
 Psosol_data <- read_excel("Qol_Psoriasis.xlsx")
-View(Psosol_data)
+summary(Psosol_data)
 PsoProve_RCT <- read_excel("PsoProve2_RCT dataset.xlsx")
-View(PsoProve_RCT)
+summary(PsoProve_RCT)
 
 # Join work_impair_0 from PsoProve_RCT to Psosol_data
 Psosol_data <- Psosol_data %>%
